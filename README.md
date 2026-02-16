@@ -6,7 +6,7 @@
 
 **SwiftBus** is a full-stack web application designed to streamline bus ticket reservations. It allows passengers to view real-time seat availability, book tickets instantly, and enables administrators to manage routes, schedules, and bookings through a secure dashboard.
 
-🔗 **Live Demo:** [Insert your Netlify/GitHub Pages link here]  
+ 
 📂 **Repository:** https://github.com/AselKarunathilaka/swiftbus-booking-system.git
 
 ---
