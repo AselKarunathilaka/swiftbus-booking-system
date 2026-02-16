@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin Panel - SwiftBus</title>
+  <link rel="stylesheet" href="./css/style.css"/>
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">🛠️ Admin Panel</div>
+    <div class="nav-right">
+      <a href="./index.html" class="btn small">View as User</a>
+      <button class="btn small danger" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="muted">Active Routes</div>
+        <div class="kpi-val" id="kpiRoutes">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="muted">Active Schedules</div>
+        <div class="kpi-val" id="kpiSchedules">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="muted">Total Bookings</div>
+        <div class="kpi-val" id="kpiBookings">0</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-header">
+          <h2>Routes</h2>
+        </div>
+        
+        <div class="row" style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; align-items:flex-end;">
+          <div class="field">
+            <label>From</label>
+            <input id="fromIn" placeholder="Start City"/>
+          </div>
+          <div class="field">
+            <label>To</label>
+            <input id="toIn" placeholder="End City"/>
+          </div>
+          <button class="btn primary" id="addRouteBtn">Add Route</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th>Route</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="routesBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <h2>Schedules</h2>
+        </div>
+
+        <div class="row" style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; align-items:flex-end;">
+          <div class="field">
+            <label>Route</label>
+            <select id="routeSel"><option value="">Select...</option></select>
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input id="dateIn" type="date"/>
+          </div>
+          <div class="field" style="width:100px; flex:none;">
+            <label>Time</label>
+            <input id="timeIn" type="time"/>
+          </div>
+          <div class="field" style="width:100px; flex:none;">
+            <label>Price</label>
+            <input id="priceIn" type="number" placeholder="1000"/>
+          </div>
+          <button class="btn primary" id="addScheduleBtn">Add</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th>Details</th><th>Price</th><th>Seats</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="schedBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <div class="section-header">
+        <h2>All Bookings</h2>
+      </div>
+      
+      <div class="row">
+        <div class="field" style="max-width:400px;">
+          <label>Search Bookings</label>
+          <div style="display:flex; gap:8px;">
+            <input id="filterSchedule" placeholder="Name, Phone or Schedule ID..."/>
+            <button id="applyFilterBtn" class="btn">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Route Info</th> <th>Time</th>       <th>Seat</th>
+              <th>Passenger</th>
+              <th>Phone</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="bookingsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script type="module" src="./js/admin.js"></script>
+</body>
+</html>

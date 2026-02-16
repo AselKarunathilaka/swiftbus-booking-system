@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Book Seats - SwiftBus</title>
+  <link rel="stylesheet" href="./css/style.css"/>
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">🚌 SwiftBus</div>
+    <div class="nav-right">
+      <span id="who" class="badge gray">Guest</span>
+      <a href="./admin.html" id="adminLink" style="display:none;" class="btn small">Admin Panel</a>
+      <button class="btn small danger" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="grid grid-2-1">
+      
+      <div class="card">
+        <div class="section-header">
+          <h2>Select Your Trip</h2>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Route</label>
+            <select id="routeSel"><option value="">Loading routes...</option></select>
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input id="dateSel" type="date"/>
+          </div>
+          <div class="field">
+            <label>Time & Price</label>
+            <select id="timeSel"><option value="">Select Route & Date first</option></select>
+          </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 24px 0;">
+
+        <div class="seat-legend">
+          <div class="legend-item">
+            <div class="dot" style="border: 2px solid #475569; background: transparent;"></div> 
+            Available
+          </div>
+          
+          <div class="legend-item">
+            <div class="dot" style="background: #10b981; box-shadow: 0 0 8px rgba(16,185,129,0.6);"></div> 
+            Selected
+          </div>
+          
+          <div class="legend-item">
+            <div class="dot" style="background: #280a0e; border: 2px solid #e11d48;"></div> 
+            Booked
+          </div>
+        </div>
+
+        <div class="bus-container">
+          <div class="bus-front">
+            <div class="driver-seat" title="Driver">👮</div>
+          </div>
+          <div id="seatGrid" class="seat-grid">
+            <div style="grid-column: 1/-1; text-align:center; padding:20px;" class="muted">
+              Select a schedule to view seats
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:24px;">
+        <div class="card">
+          <div class="section-header">
+            <h2>Your Booking</h2>
+          </div>
+          
+          <div class="field" style="margin-bottom:12px;">
+            <label>Selected Seat</label>
+            <input id="seatView" disabled placeholder="No seat selected" 
+                   style="font-weight:bold; color:var(--success); border-color:var(--success);">
+          </div>
+
+          <div class="field" style="margin-bottom:12px;">
+            <label>Passenger Name</label>
+            <input id="pName" placeholder="Enter name"/>
+          </div>
+          
+          <div class="field" style="margin-bottom:20px;">
+            <label>Phone Number</label>
+            <input id="pPhone" placeholder="077xxxxxxx"/>
+          </div>
+
+          <div class="field" style="margin-bottom:20px;">
+            <label>Total Price</label>
+            <input id="priceView" disabled placeholder="LKR 0.00"/>
+          </div>
+
+          <button id="bookBtn" class="btn primary w-full" disabled>Confirm Booking</button>
+        </div>
+
+        <div class="card">
+          <div class="section-header">
+            <h2>My Recent Trips</h2>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Date</th><th>Seat</th><th>Status</th></tr></thead>
+              <tbody id="myBookings"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script type="module" src="./js/user.js"></script>
+</body>
+</html>
