@@ -1,36 +1,53 @@
-# 🚌 SwiftBus - Real-time Bus Seat Booking System
+# 🚌 SwiftBus - Real-Time Bus Seat Booking System
 
-![Project Status](https://img.shields.io/badge/status-active-success)
-![License](https://img.shields.io/badge/license-MIT-blue)
-![Tech Stack](https://img.shields.io/badge/stack-HTML%20%7C%20CSS%20%7C%20JS%20%7C%20Firebase-orange)
+![Status](https://img.shields.io/badge/Status-Active-success)
+![License](https://img.shields.io/badge/License-MIT-blue)
+![Tech](https://img.shields.io/badge/Tech-HTML%20|%20CSS%20|%20JS%20|%20Firebase-orange)
 
-**SwiftBus** is a modern, responsive web application for booking bus seats in real-time. It features a high-contrast neon UI, a visual seat layout connection, and a comprehensive Admin Panel for managing routes and schedules.
+**SwiftBus** is a full-stack web application designed to streamline bus ticket reservations. It allows passengers to view real-time seat availability, book tickets instantly, and enables administrators to manage routes, schedules, and bookings through a secure dashboard.
+
+🔗 **Live Demo:** [Insert your Netlify/GitHub Pages link here]  
+📂 **Repository:** https://github.com/AselKarunathilaka/swiftbus-booking-system.git
 
 ---
 
-## 🌟 Features
+## ✨ Features
 
-### 👤 User Panel
-* **Visual Seat Map:** Interactive "Bus Layout" with neon indicators for Available, Selected, and Booked seats.
-* **Real-time Updates:** See seats getting booked by other users instantly (powered by Firestore listeners).
-* **Booking History:** View a list of your past and upcoming trips.
-* **Responsive Design:** Works seamlessly on desktop and mobile devices.
+### 👤 User Panel (Passenger)
+* **Visual Seat Map:** Interactive bus layout displaying seat status (Available, Selected, Booked).
+* **Real-Time Locking:** Seat availability updates instantly across all devices using Firestore listeners.
+* **Trip Search:** Filter trips by Route, Date, and Time.
+* **Booking Management:** View booking history and status.
+* **Responsive UI:** Optimized for mobile and desktop booking.
 
 ### 🛠️ Admin Panel
-* **Dashboard KPIs:** Quick view of total Active Routes, Schedules, and Bookings.
-* **Route Management:** Add, Disable, or Delete bus routes (e.g., Colombo → Kandy).
-* **Schedule Management:** Assign busses to routes with specific dates, times, and prices.
-* **Smart Booking Search:** Filter bookings by Passenger Name, Phone, or Schedule ID instantly.
-* **Booking Actions:** Cancel user bookings directly from the admin interface.
+* **Dashboard KPIs:** At-a-glance view of Active Routes, Schedules, and Total Bookings.
+* **Route Management:** Add, Disable, or Delete bus routes (e.g., Colombo ⇄ Kandy).
+* **Schedule Management:** Assign busses to routes with specific prices and seat counts.
+* **Booking Oversight:** Search bookings by Schedule ID and cancel tickets to free up seats.
+* **Security:** Role-based access control preventing unauthorized admin access.
 
 ---
 
-## 🚀 Tech Stack
+## 🏗️ Technology Stack
 
-* **Frontend:** HTML5, CSS3 (Custom Glassmorphism/Neon UI), Vanilla JavaScript (ES6+ Modules).
-* **Backend:** Google Firebase (v9 Modular SDK).
+* **Frontend:** HTML5, CSS3 (Custom Glassmorphism/Dark Theme), Vanilla JavaScript (ES6 Modules).
+* **Backend (BaaS):** Google Firebase.
 * **Database:** Cloud Firestore (NoSQL).
-* **Authentication:** Firebase Auth (Email/Password).
-* **Deployment:** GitHub Pages / Netlify.
+* **Authentication:** Firebase Authentication (Email/Password).
+* **Hosting:** GitHub Pages / Netlify.
+
+---
+
+## 💾 Database Schema (Firestore)
+
+The application uses a NoSQL structure with the following collections:
+
+| Collection | Description | Key Fields |
+| :--- | :--- | :--- |
+| **`users`** | User profiles | `name`, `phone`, `email`, `role` ("user" or "admin") |
+| **`routes`** | Bus routes | `from`, `to`, `isActive` |
+| **`schedules`** | Trip times | `routeId`, `date`, `time`, `price`, `seatCount` |
+| **`bookings`** | Reservations | `scheduleId`, `seatNo`, `userId`, `passengerName`, `status` |
 
 ---
