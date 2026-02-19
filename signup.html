@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Login - SwiftBus</title>
+  <title>Sign Up - SwiftBus</title>
   <link rel="stylesheet" href="./css/style.css"/>
   <style>
     body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
@@ -13,7 +13,19 @@
   <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
     <div style="text-align: center; margin-bottom: 2rem;">
       <h1 style="margin:0;">🚌 SwiftBus</h1>
-      <p class="muted">Welcome back</p>
+      <p class="muted">Create your account</p>
+    </div>
+
+    <div class="field" style="margin-bottom: 16px;">
+      <label>Full Name</label>
+      <input id="name" type="text" placeholder="John Doe" 
+             oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')"/>
+    </div>
+
+    <div class="field" style="margin-bottom: 16px;">
+      <label>Phone Number</label>
+      <input id="phone" type="tel" placeholder="077xxxxxxx" maxlength="12"
+             oninput="this.value = this.value.replace(/[^0-9+]/g, '')"/>
     </div>
 
     <div class="field" style="margin-bottom: 16px;">
@@ -23,41 +35,46 @@
     
     <div class="field" style="margin-bottom: 24px;">
       <label>Password</label>
-      <input id="password" type="password" placeholder="••••••"/>
+      <input id="password" type="password" placeholder="Min. 6 characters"/>
     </div>
 
     <div id="err" style="color:var(--danger); font-size:0.9rem; margin-bottom:16px; min-height:20px;"></div>
 
-    <button id="btn" class="btn primary w-full" style="margin-bottom: 16px;">Log In</button>
+    <button id="btn" class="btn primary w-full" style="margin-bottom: 16px;">Create Account</button>
     
     <div style="text-align: center; font-size: 0.9rem;">
-      <span class="muted">New here?</span> <a href="./signup.html">Create Account</a>
+      <span class="muted">Already have an account?</span> <a href="./login.html">Log In</a>
     </div>
   </div>
 
   <script type="module">
-    import { login, getMyProfile } from "./js/auth.js";
+    // IMPORT signupUser from auth.js
+    import { signupUser } from "./js/auth.js";
 
     const btn = document.getElementById("btn");
     const err = document.getElementById("err");
 
     btn.addEventListener("click", async () => {
       err.textContent = "";
-      btn.textContent = "Logging in...";
+      btn.textContent = "Creating Account...";
       btn.disabled = true;
 
       try {
-        const uid = await login({ 
+        // Collect all 4 fields and pass them to Firebase
+        await signupUser({ 
+          name: document.getElementById("name").value,
+          phone: document.getElementById("phone").value,
           email: document.getElementById("email").value, 
           password: document.getElementById("password").value 
         }, err);
         
-        const profile = await getMyProfile(uid);
-        window.location.href = profile?.role === "admin" ? "./admin.html" : "./index.html";
+        // On success, redirect to the booking dashboard!
+        window.location.href = "./index.html";
       } catch(e) {
-        err.textContent = "Login failed. Check your email/password.";
+        // Clean up the error message
+        err.textContent = e.message.replace("Firebase: ", "");
         btn.disabled = false;
-        btn.textContent = "Log In";
+        btn.textContent = "Create Account";
       }
     });
   </script>
