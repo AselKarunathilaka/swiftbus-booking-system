@@ -56,7 +56,6 @@ function buildSeatLayout(seatCount = 44) {
   const rows = Math.ceil(seatCount / 4);
   
   for (let r = 0; r < rows; r++) {
-    // Layout: L1, L2, AISLE, R1, R2
     if (n <= seatCount) seats.push(`L${n++}`);
     if (n <= seatCount) seats.push(`L${n++}`);
     seats.push("AISLE");
@@ -73,7 +72,7 @@ function renderSeats() {
     return;
   }
 
-  const layout = buildSeatLayout(44); // Default 44
+  const layout = buildSeatLayout(44); 
 
   layout.forEach(seatNo => {
     if (seatNo === "AISLE") {
@@ -87,18 +86,15 @@ function renderSeats() {
     div.className = "seat";
     div.textContent = seatNo;
 
-    // Apply styles
     if (bookedSeats.has(seatNo)) {
       div.classList.add("booked");
     } else if (seatNo === selectedSeat) {
       div.classList.add("selected");
     }
 
-    // Click Event
     div.addEventListener("click", () => {
       if (bookedSeats.has(seatNo)) return;
       
-      // Toggle selection
       if (selectedSeat === seatNo) {
         selectedSeat = "";
         seatView.value = "";
@@ -108,7 +104,7 @@ function renderSeats() {
         seatView.value = seatNo;
         bookBtn.disabled = false;
       }
-      renderSeats(); // Re-render to update highlights
+      renderSeats(); 
     });
 
     seatGrid.appendChild(div);
@@ -127,6 +123,7 @@ async function loadRoutes() {
       const r = d.data();
       const opt = document.createElement("option");
       opt.value = d.id;
+      // We store the text in the option so we can grab it later for the booking record
       opt.textContent = `${r.from} ➝ ${r.to}`;
       routeSel.appendChild(opt);
     });
@@ -143,11 +140,10 @@ async function loadTimes() {
   timeSel.innerHTML = `<option value="">Select time</option>`;
   timeSel.disabled = true;
   
-  // Reset UI
   selectedScheduleId = "";
   selectedSeat = "";
   bookedSeats.clear();
-  renderSeats(); // Clears grid
+  renderSeats(); 
 
   if (!routeId || !date) return;
 
@@ -173,23 +169,20 @@ async function loadTimes() {
 function startRealtimeSeats(scheduleId) {
   if (unsubscribeSeats) unsubscribeSeats();
   
-  // Listen for bookings on this schedule
   const q = query(collection(db, "bookings"), where("scheduleId", "==", scheduleId), where("status", "==", "booked"));
   
   unsubscribeSeats = onSnapshot(q, (snap) => {
     bookedSeats.clear();
     snap.forEach(d => bookedSeats.add(d.data().seatNo));
     
-    // If selected seat just got booked
     if (selectedSeat && bookedSeats.has(selectedSeat)) {
       selectedSeat = "";
       seatView.value = "";
       toast("The seat you selected was just booked!", "error");
     }
-    renderSeats(); // Update grid with red seats
+    renderSeats(); 
   }, (error) => {
     console.error("Snapshot Error:", error);
-    // Even if DB fails, we keep the empty seats visible so user knows the UI isn't broken
   });
 }
 
@@ -208,10 +201,7 @@ timeSel.addEventListener("change", () => {
   selectedScheduleId = opt.value;
   priceView.value = `LKR ${opt.dataset.price}`;
   
-  // 1. Render empty bus IMMEDIATELY (Fixes the "missing layout" bug)
   renderSeats(); 
-  
-  // 2. Then fetch booked seats
   startRealtimeSeats(selectedScheduleId);
 });
 
@@ -227,6 +217,12 @@ bookBtn.addEventListener("click", async () => {
   try {
     const bookingId = `${selectedScheduleId}_${selectedSeat}`;
     
+    // CAPTURE READABLE DATA FOR HISTORY
+    // We grab the text directly from the dropdowns
+    const routeText = routeSel.options[routeSel.selectedIndex].text; 
+    const timeText = timeSel.options[timeSel.selectedIndex].text;
+    const dateText = dateSel.value;
+
     await runTransaction(db, async (tx) => {
       const ref = doc(db, "bookings", bookingId);
       const docSnap = await tx.get(ref);
@@ -241,7 +237,11 @@ bookBtn.addEventListener("click", async () => {
         phone: pPhone.value.trim(),
         userId: currentUser.uid,
         status: "booked",
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        // NEW: Save human-readable details for the "My Trips" table
+        routeDetails: routeText,
+        timeDetails: timeText,
+        dateDetails: dateText
       });
     });
 
@@ -255,7 +255,7 @@ bookBtn.addEventListener("click", async () => {
     toast(e.message, "error");
   } finally {
     bookBtn.textContent = btnText;
-    bookBtn.disabled = false; // Allow trying again
+    bookBtn.disabled = false; 
   }
 });
 
@@ -289,8 +289,20 @@ bookBtn.addEventListener("click", async () => {
     myBookingsBody.innerHTML = "";
     snap.forEach(d => {
       const b = d.data();
+      
+      // Use the saved details, or fallbacks if they don't exist (legacy data)
+      const routeDisplay = b.routeDetails || "Loading...";
+      const timeDisplay = b.timeDetails || "N/A";
+      const dateDisplay = b.dateDetails || (b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString() : 'N/A');
+      
+      // Short ID for display (first 8 chars of the doc ID)
+      const shortId = d.id.substring(0, 8) + "...";
+
       const row = `<tr>
-        <td>${b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString() : 'Now'}</td>
+        <td><span class="muted" style="font-family:monospace; font-size:0.8em">${shortId}</span></td>
+        <td><div style="font-weight:bold; font-size:0.9em">${routeDisplay}</div></td>
+        <td>${timeDisplay}</td>
+        <td>${dateDisplay}</td>
         <td><span class="badge gray">${b.seatNo}</span></td>
         <td><span class="badge green">Confirmed</span></td>
       </tr>`;
