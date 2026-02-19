@@ -84,12 +84,14 @@
 
           <div class="field" style="margin-bottom:12px;">
             <label>Passenger Name</label>
-            <input id="pName" placeholder="Enter name"/>
+            <input id="pName" type="text" placeholder="Enter name" 
+                   oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')"/>
           </div>
           
           <div class="field" style="margin-bottom:20px;">
             <label>Phone Number</label>
-            <input id="pPhone" placeholder="077xxxxxxx"/>
+            <input id="pPhone" type="tel" placeholder="077xxxxxxx" maxlength="12" 
+                   oninput="this.value = this.value.replace(/[^0-9+]/g, '')"/>
           </div>
 
           <div class="field" style="margin-bottom:20px;">
@@ -108,12 +110,12 @@
             <table class="table">
               <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Route</th>
-                    <th>Time</th>
-                    <th>Date</th>
-                    <th>Seat</th>
-                    <th>Status</th>
+                  <th>ID</th>
+                  <th>Route</th>
+                  <th>Time</th>
+                  <th>Date</th>
+                  <th>Seat</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody id="myBookings"></tbody>
