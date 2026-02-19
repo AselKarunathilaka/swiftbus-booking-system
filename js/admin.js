@@ -1,9 +1,9 @@
 // public/js/admin.js
 import { db } from "./firebase-config.js";
 import { logout, requireAuth } from "./auth.js";
-import { 
-  collection, doc, addDoc, updateDoc, deleteDoc, getDoc, 
-  query, orderBy, onSnapshot, serverTimestamp, limit 
+import {
+  collection, doc, addDoc, updateDoc, deleteDoc, getDoc,
+  query, orderBy, onSnapshot, serverTimestamp, limit
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 // --- Toast Notification Helper ---
@@ -41,13 +41,12 @@ const kpiSchedules = document.getElementById("kpiSchedules");
 const kpiBookings = document.getElementById("kpiBookings");
 
 // --- GLOBAL DATA CACHE (The Secret Sauce) ---
-// We store data here so the Bookings table can "look up" Route Names instantly.
-let routeCache = {};      // Maps routeID -> {from, to}
-let scheduleCache = {};   // Maps scheduleID -> {time, routeId, date}
-let allBookingsData = []; // Stores raw bookings
+let routeCache = {};      // routeID -> {from, to}
+let scheduleCache = {};   // scheduleID -> {time, routeId, date}
+let allBookingsData = []; // raw bookings
 
 // Logout
-if(logoutBtn) {
+if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
     await logout();
     window.location.href = "./login.html";
@@ -59,22 +58,20 @@ if(logoutBtn) {
 // ----------------------
 function listenRoutes() {
   const q = query(collection(db, "routes"), orderBy("from"));
-  
+
   onSnapshot(q, (snap) => {
     routesBody.innerHTML = "";
     routeSel.innerHTML = `<option value="">Select Route</option>`;
-    routeCache = {}; // Clear cache to rebuild
+    routeCache = {};
     let activeCount = 0;
-    
+
     snap.forEach(d => {
       const r = d.data();
-      
-      // Save to Cache for Bookings Table
+
       routeCache[d.id] = r;
 
       if (r.isActive) activeCount++;
 
-      // Dropdown
       if (r.isActive) {
         const opt = document.createElement("option");
         opt.value = d.id;
@@ -82,7 +79,6 @@ function listenRoutes() {
         routeSel.appendChild(opt);
       }
 
-      // Table
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><b>${r.from}</b> ➝ <b>${r.to}</b></td>
@@ -97,9 +93,9 @@ function listenRoutes() {
       routesBody.appendChild(tr);
     });
 
-    if(kpiRoutes) kpiRoutes.textContent = activeCount;
-    
-    // Refresh bookings table because now we have route names!
+    if (kpiRoutes) kpiRoutes.textContent = activeCount;
+
+    // refresh bookings table (route names become available)
     renderBookingsTable(filterInput ? filterInput.value : "");
   });
 }
@@ -109,130 +105,181 @@ addRouteBtn.addEventListener("click", async () => {
   const toVal = toIn.value.trim();
 
   if (fromVal.length < 2 || toVal.length < 2) return toast("City names too short", "error");
-  
+
   addRouteBtn.disabled = true;
   addRouteBtn.textContent = "Adding...";
-  
+
   try {
     await addDoc(collection(db, "routes"), {
-      from: fromVal, to: toVal, isActive: true, createdAt: serverTimestamp()
+      from: fromVal,
+      to: toVal,
+      isActive: true,
+      createdAt: serverTimestamp()
     });
-    toast("Route added successfully!");
-    fromIn.value = ""; toIn.value = "";
+
+    toast("Route added!");
+    fromIn.value = "";
+    toIn.value = "";
   } catch (e) {
-    toast("Error: " + e.message, "error");
+    console.error(e);
+    toast("Failed to add route", "error");
   } finally {
     addRouteBtn.disabled = false;
     addRouteBtn.textContent = "Add Route";
   }
 });
 
-window.toggleRoute = async (id, state) => {
-  try { await updateDoc(doc(db, "routes", id), { isActive: state }); } catch(e) { toast("Error updating", "error"); }
+window.toggleRoute = async (id, val) => {
+  try {
+    await updateDoc(doc(db, "routes", id), { isActive: val });
+    toast(val ? "Route enabled" : "Route disabled");
+  } catch (e) {
+    console.error(e);
+    toast("Failed to update route", "error");
+  }
 };
+
 window.deleteRoute = async (id) => {
-  if(confirm("Delete route?")) await deleteDoc(doc(db, "routes", id));
+  if (!confirm("Delete route? This cannot be undone.")) return;
+  try {
+    await deleteDoc(doc(db, "routes", id));
+    toast("Route deleted");
+  } catch (e) {
+    console.error(e);
+    toast("Failed to delete route", "error");
+  }
 };
 
 // ----------------------
 // 2. SCHEDULES
 // ----------------------
 function listenSchedules() {
-  const q = query(collection(db, "schedules"), orderBy("date", "desc"));
-  
+  const q = query(collection(db, "schedules"), orderBy("date"), orderBy("time"));
+
   onSnapshot(q, (snap) => {
     schedBody.innerHTML = "";
-    scheduleCache = {}; // Clear cache
-    if(kpiSchedules) kpiSchedules.textContent = snap.size;
+    scheduleCache = {};
+    let count = 0;
 
     snap.forEach(d => {
       const s = d.data();
-      
-      // Save to Cache for Bookings Table
       scheduleCache[d.id] = s;
+      count++;
 
-      // Resolve Route Name from Cache
       const r = routeCache[s.routeId];
       const routeName = r ? `${r.from} ➝ ${r.to}` : "Unknown Route";
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
+        <td><b>${routeName}</b></td>
+        <td>${s.date}</td>
+        <td>${s.time}</td>
+        <td>${s.price}</td>
         <td>
-          <div style="font-weight:bold; color:var(--text-main)">${s.date} <span class="muted">@</span> ${s.time}</div>
-          <div class="muted" style="font-size:0.85em">${routeName}</div>
-        </td>
-        <td>LKR ${s.price}</td>
-        <td>${s.seatCount || 44}</td>
-        <td>
-          <button class="btn small danger" onclick="window.deleteSched('${d.id}')">Cancel</button>
+          <button class="btn small danger" onclick="window.deleteSchedule('${d.id}')">Delete</button>
         </td>
       `;
       schedBody.appendChild(tr);
     });
 
-    // Refresh bookings table because now we have schedule times!
+    if (kpiSchedules) kpiSchedules.textContent = count;
+
+    // refresh bookings table (schedule time becomes available)
     renderBookingsTable(filterInput ? filterInput.value : "");
   });
 }
 
 addScheduleBtn.addEventListener("click", async () => {
-  if (!routeSel.value || !dateIn.value || !timeIn.value || !priceIn.value) return toast("Fill all fields", "error");
-  
+  const routeId = routeSel.value;
+  const dateVal = dateIn.value;
+  const timeVal = timeIn.value;
+  const priceVal = parseFloat(priceIn.value);
+
+  if (!routeId) return toast("Select a route first", "error");
+  if (!dateVal) return toast("Select a date", "error");
+  if (!timeVal) return toast("Select a time", "error");
+  if (isNaN(priceVal) || priceVal < 0) return toast("Invalid price", "error");
+
   addScheduleBtn.disabled = true;
   addScheduleBtn.textContent = "Adding...";
 
   try {
     await addDoc(collection(db, "schedules"), {
-      routeId: routeSel.value, date: dateIn.value, time: timeIn.value,
-      price: Number(priceIn.value), seatCount: 44, isActive: true, createdAt: serverTimestamp()
+      routeId,
+      date: dateVal,
+      time: timeVal,
+      price: priceVal,
+      seatCount: 44,
+      createdAt: serverTimestamp()
     });
-    toast("Schedule created!");
+
+    toast("Schedule added!");
+    timeIn.value = "";
+    priceIn.value = "";
   } catch (e) {
-    toast(e.message, "error");
+    console.error(e);
+    toast("Failed to add schedule", "error");
   } finally {
     addScheduleBtn.disabled = false;
-    addScheduleBtn.textContent = "Add";
+    addScheduleBtn.textContent = "Add Schedule";
   }
 });
 
-window.deleteSched = async (id) => {
-  if(confirm("Delete schedule?")) await deleteDoc(doc(db, "schedules", id));
+window.deleteSchedule = async (id) => {
+  if (!confirm("Delete schedule?")) return;
+  try {
+    await deleteDoc(doc(db, "schedules", id));
+    toast("Schedule deleted");
+  } catch (e) {
+    console.error(e);
+    toast("Failed to delete schedule", "error");
+  }
 };
 
 // ----------------------
-// 3. BOOKINGS (With Route & Time Lookup)
+// 3. BOOKINGS
 // ----------------------
 function listenBookings() {
-  const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"), limit(100));
-  
+  const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"), limit(200));
+
   onSnapshot(q, (snap) => {
     allBookingsData = [];
-    let activeBookings = 0;
+    let count = 0;
 
     snap.forEach(d => {
       const b = d.data();
-      if(b.status === 'booked') activeBookings++;
-      
+      count++;
+
+      // createdAt formatting
+      let createdAtDate = "";
+      try {
+        createdAtDate = b.createdAt?.toDate
+          ? b.createdAt.toDate().toLocaleDateString()
+          : "";
+      } catch {
+        createdAtDate = "";
+      }
+
       allBookingsData.push({
         id: d.id,
         ...b,
-        createdAtDate: b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString() : 'N/A'
+        createdAtDate
       });
     });
-    
-    if(kpiBookings) kpiBookings.textContent = activeBookings;
-    renderBookingsTable("");
+
+    if (kpiBookings) kpiBookings.textContent = count;
+
+    renderBookingsTable(filterInput ? filterInput.value : "");
   });
 }
 
 function renderBookingsTable(filterText) {
-  if(!bookingsBody) return;
+  if (!bookingsBody) return;
   bookingsBody.innerHTML = "";
   const term = filterText.toLowerCase().trim();
 
-  // Smart Filter
   const filtered = allBookingsData.filter(b => {
-    if(!term) return true;
+    if (!term) return true;
     return (
       (b.passengerName && b.passengerName.toLowerCase().includes(term)) ||
       (b.phone && b.phone.includes(term)) ||
@@ -240,13 +287,12 @@ function renderBookingsTable(filterText) {
     );
   });
 
-  if(filtered.length === 0) {
+  if (filtered.length === 0) {
     bookingsBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center; padding:20px;">No bookings found</td></tr>`;
     return;
   }
 
   filtered.forEach(b => {
-    // --- THE MAGIC LOOKUP ---
     const sched = scheduleCache[b.scheduleId];
     let routeName = "Unknown Route";
     let timeStr = "Unknown Time";
@@ -258,7 +304,6 @@ function renderBookingsTable(filterText) {
       const r = routeCache[sched.routeId];
       if (r) routeName = `${r.from} ➝ ${r.to}`;
     }
-    // ------------------------
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -274,11 +319,12 @@ function renderBookingsTable(filterText) {
       <td><span class="badge gray">${b.seatNo}</span></td>
       <td>${b.passengerName}</td>
       <td>${b.phone}</td>
-      <td><span class="badge ${b.status==='booked'?'green':'red'}">${b.status}</span></td>
+      <td><span class="badge ${b.status === 'booked' ? 'green' : 'red'}">${b.status}</span></td>
       <td>
-        ${b.status === 'booked' 
-          ? `<button class="btn small danger" onclick="window.cancelBooking('${b.id}')">Cancel</button>` 
-          : '<span class="muted">-</span>'}
+        ${b.status === 'booked'
+          ? `<button class="btn small danger" onclick="window.cancelBooking('${b.id}')">Cancel</button>`
+          : `<span class="muted">-</span>`}
+        <button class="btn small danger" style="margin-left:8px" onclick="window.deleteBooking('${b.id}')">Delete</button>
       </td>
     `;
     bookingsBody.appendChild(tr);
@@ -289,9 +335,16 @@ applyFilterBtn.addEventListener("click", () => renderBookingsTable(filterInput.v
 filterInput.addEventListener("keyup", (e) => renderBookingsTable(e.target.value));
 
 window.cancelBooking = async (id) => {
-  if(confirm("Cancel booking?")) {
+  if (confirm("Cancel booking?")) {
     await updateDoc(doc(db, "bookings", id), { status: "cancelled" });
     toast("Booking cancelled");
+  }
+};
+
+window.deleteBooking = async (id) => {
+  if (confirm("Permanently delete this booking?")) {
+    await deleteDoc(doc(db, "bookings", id));
+    toast("Booking deleted");
   }
 };
 
@@ -299,16 +352,18 @@ window.cancelBooking = async (id) => {
 // INIT
 // ----------------------
 (async function init() {
-  if(dateIn) dateIn.min = new Date().toISOString().split('T')[0];
-  
+  if (dateIn) dateIn.min = new Date().toISOString().split('T')[0];
+
   const authData = await requireAuth({});
-  if (!authData || authData.profile?.role !== "admin") {
-    window.location.href = "./login.html";
+  if (!authData) return;
+
+  // Must be admin
+  if (!authData.isAdmin) {
+    toast("Admins only", "error");
+    window.location.href = "./index.html";
     return;
   }
-  
-  // Start listening to everything.
-  // The tables will auto-update as the data arrives.
+
   listenRoutes();
   listenSchedules();
   listenBookings();
