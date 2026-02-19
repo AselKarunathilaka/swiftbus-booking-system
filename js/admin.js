@@ -234,7 +234,7 @@ window.deleteSched = async (id) => {
 };
 
 // ----------------------
-// 3. BOOKINGS (Improved Search)
+// 3. BOOKINGS 
 // ----------------------
 function listenBookings() {
   const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"), limit(100));
@@ -264,11 +264,9 @@ function renderBookingsTable(filterText) {
   bookingsBody.innerHTML = "";
   const term = filterText.toLowerCase().trim();
 
-  // Smart Filter - Search Name, Phone, Route, Time, Date, Seat
   const filtered = allBookingsData.filter(b => {
     if(!term) return true;
 
-    // Resolve schedule and route details so we can search through them
     const sched = scheduleCache[b.scheduleId];
     let routeName = "";
     let timeStr = "";
@@ -288,12 +286,13 @@ function renderBookingsTable(filterText) {
       (routeName && routeName.includes(term)) ||
       (timeStr && timeStr.includes(term)) ||
       (dateStr && dateStr.includes(term)) ||
-      (b.scheduleId && b.scheduleId.toLowerCase().includes(term))
+      (b.scheduleId && b.scheduleId.toLowerCase().includes(term)) ||
+      (b.id && b.id.toLowerCase().includes(term)) // ID SEARCH INCLUDED HERE
     );
   });
 
   if(filtered.length === 0) {
-    bookingsBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center; padding:20px;">No bookings found matching "${filterText}"</td></tr>`;
+    bookingsBody.innerHTML = `<tr><td colspan="9" class="muted" style="text-align:center; padding:20px;">No bookings found matching "${filterText}"</td></tr>`;
     return;
   }
 
@@ -310,8 +309,12 @@ function renderBookingsTable(filterText) {
       if (r) routeName = `${r.from} ➝ ${r.to}`;
     }
 
+    // Generate short ID for display
+    const shortId = b.id.substring(0, 8) + "...";
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td><span class="muted" style="font-family:monospace; font-size:0.8em">${shortId}</span></td>
       <td>
         <div style="font-weight:bold; font-size:0.9em">${b.createdAtDate}</div>
         <div class="muted" style="font-size:0.75em">Booked on</div>
