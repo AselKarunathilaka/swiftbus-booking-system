@@ -36,7 +36,7 @@ const schedBody = document.getElementById("schedBody");
 const filterInput = document.getElementById("filterSchedule");
 const applyFilterBtn = document.getElementById("applyFilterBtn");
 const bookingsBody = document.getElementById("bookingsBody");
-const clearAllBtn = document.getElementById("clearAllBtn"); // Clear all button
+const clearAllBtn = document.getElementById("clearAllBtn"); 
 
 const kpiRoutes = document.getElementById("kpiRoutes");
 const kpiSchedules = document.getElementById("kpiSchedules");
@@ -234,7 +234,7 @@ window.deleteSched = async (id) => {
 };
 
 // ----------------------
-// 3. BOOKINGS
+// 3. BOOKINGS (Improved Search)
 // ----------------------
 function listenBookings() {
   const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"), limit(100));
@@ -264,17 +264,36 @@ function renderBookingsTable(filterText) {
   bookingsBody.innerHTML = "";
   const term = filterText.toLowerCase().trim();
 
+  // Smart Filter - Search Name, Phone, Route, Time, Date, Seat
   const filtered = allBookingsData.filter(b => {
     if(!term) return true;
+
+    // Resolve schedule and route details so we can search through them
+    const sched = scheduleCache[b.scheduleId];
+    let routeName = "";
+    let timeStr = "";
+    let dateStr = "";
+
+    if (sched) {
+      timeStr = sched.time ? sched.time.toLowerCase() : "";
+      dateStr = sched.date ? sched.date.toLowerCase() : "";
+      const r = routeCache[sched.routeId];
+      if (r) routeName = `${r.from} ➝ ${r.to}`.toLowerCase();
+    }
+
     return (
       (b.passengerName && b.passengerName.toLowerCase().includes(term)) ||
       (b.phone && b.phone.includes(term)) ||
+      (b.seatNo && b.seatNo.toLowerCase().includes(term)) ||
+      (routeName && routeName.includes(term)) ||
+      (timeStr && timeStr.includes(term)) ||
+      (dateStr && dateStr.includes(term)) ||
       (b.scheduleId && b.scheduleId.toLowerCase().includes(term))
     );
   });
 
   if(filtered.length === 0) {
-    bookingsBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center; padding:20px;">No bookings found</td></tr>`;
+    bookingsBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center; padding:20px;">No bookings found matching "${filterText}"</td></tr>`;
     return;
   }
 
@@ -326,7 +345,7 @@ window.cancelBooking = async (id) => {
   }
 };
 
-// --- NEW: WIPE ALL ORPHANED/STALE BOOKINGS ---
+// --- WIPE ALL ORPHANED/STALE BOOKINGS ---
 if(clearAllBtn) {
   clearAllBtn.addEventListener("click", async () => {
     if(!confirm("⚠️ DANGER: This will delete EVERY booking in the database.")) return;
