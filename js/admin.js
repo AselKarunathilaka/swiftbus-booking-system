@@ -36,15 +36,16 @@ const schedBody = document.getElementById("schedBody");
 const filterInput = document.getElementById("filterSchedule");
 const applyFilterBtn = document.getElementById("applyFilterBtn");
 const bookingsBody = document.getElementById("bookingsBody");
+const clearAllBtn = document.getElementById("clearAllBtn"); // Clear all button
 
 const kpiRoutes = document.getElementById("kpiRoutes");
 const kpiSchedules = document.getElementById("kpiSchedules");
 const kpiBookings = document.getElementById("kpiBookings");
 
 // --- GLOBAL DATA CACHE ---
-let routeCache = {};      // Maps routeID -> {from, to}
-let scheduleCache = {};   // Maps scheduleID -> {time, routeId, date}
-let allBookingsData = []; // Stores raw bookings
+let routeCache = {};      
+let scheduleCache = {};   
+let allBookingsData = []; 
 
 // Logout
 if(logoutBtn) {
@@ -66,7 +67,6 @@ async function cleanupBookings(filterField, filterValue) {
   const batch = writeBatch(db);
   snap.forEach((d) => batch.delete(d.ref));
   await batch.commit();
-  console.log(`Cleaned up ${snap.size} bookings for ${filterField}: ${filterValue}`);
 }
 
 // ----------------------
@@ -144,17 +144,14 @@ window.toggleRoute = async (id, state) => {
 window.deleteRoute = async (id) => {
   if(confirm("Delete route? This will permanently delete ALL associated schedules and bookings.")) {
     try {
-      // 1. Find all schedules for this route
       const schedQ = query(collection(db, "schedules"), where("routeId", "==", id));
       const schedSnap = await getDocs(schedQ);
       
-      // 2. Queue all schedules for deletion and clear their bookings
       for (const sDoc of schedSnap.docs) {
-        await cleanupBookings("scheduleId", sDoc.id); // Delete bookings for this schedule
-        await deleteDoc(doc(db, "schedules", sDoc.id)); // Delete the schedule itself
+        await cleanupBookings("scheduleId", sDoc.id); 
+        await deleteDoc(doc(db, "schedules", sDoc.id)); 
       }
       
-      // 3. Delete the route itself
       await deleteDoc(doc(db, "routes", id));
       
       toast("Route and all related data deleted.");
@@ -226,12 +223,8 @@ addScheduleBtn.addEventListener("click", async () => {
 window.deleteSched = async (id) => {
   if(confirm("Cancel schedule? This will permanently delete all bookings for this trip.")) {
     try {
-      // 1. Delete all bookings associated with this schedule
       await cleanupBookings("scheduleId", id);
-      
-      // 2. Delete the schedule
       await deleteDoc(doc(db, "schedules", id));
-      
       toast("Schedule and associated bookings cleared.");
     } catch (e) {
       console.error(e);
@@ -332,6 +325,50 @@ window.cancelBooking = async (id) => {
     toast("Booking cancelled");
   }
 };
+
+// --- NEW: WIPE ALL ORPHANED/STALE BOOKINGS ---
+if(clearAllBtn) {
+  clearAllBtn.addEventListener("click", async () => {
+    if(!confirm("⚠️ DANGER: This will delete EVERY booking in the database.")) return;
+    if(!confirm("Are you absolutely sure? This cannot be undone.")) return;
+
+    clearAllBtn.disabled = true;
+    clearAllBtn.textContent = "Deleting...";
+
+    try {
+      const q = query(collection(db, "bookings"));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        toast("No bookings to delete.");
+        return;
+      }
+
+      const batchSize = 400; 
+      const chunks = [];
+      const docs = snap.docs;
+
+      for (let i = 0; i < docs.length; i += batchSize) {
+        chunks.push(docs.slice(i, i + batchSize));
+      }
+
+      for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+
+      toast(`Successfully deleted ${snap.size} bookings.`);
+      
+    } catch (e) {
+      console.error(e);
+      toast("Error clearing bookings: " + e.message, "error");
+    } finally {
+      clearAllBtn.disabled = false;
+      clearAllBtn.textContent = "⚠️ Clear All Bookings";
+    }
+  });
+}
 
 // ----------------------
 // INIT
