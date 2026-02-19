@@ -63,8 +63,8 @@ function buildSeatLayout() {
   }
   
   // Generate the Back Row (5 continuous seats)
-  // Since 12 rows x 4 = 48 seats, the back row starts at 49
-  seats.push("49", "50", "51", "52", "53");
+  // Using Row 13 with letters to maintain perfect uniformity
+  seats.push("13A", "13B", "13C", "13D", "13E");
   
   return seats;
 }
