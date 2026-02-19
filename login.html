@@ -22,11 +22,14 @@
     </div>
     
     <div class="field" style="margin-bottom: 24px;">
-      <label>Password</label>
+      <label style="display: flex; justify-content: space-between;">
+        Password
+        <a href="#" id="forgotPwd" style="font-size: 0.8rem; font-weight: 500;">Forgot?</a>
+      </label>
       <input id="password" type="password" placeholder="••••••"/>
     </div>
 
-    <div id="err" style="color:var(--danger); font-size:0.9rem; margin-bottom:16px; min-height:20px;"></div>
+    <div id="err" style="color:var(--danger); font-size:0.9rem; margin-bottom:16px; min-height:20px; font-weight: 500;"></div>
 
     <button id="btn" class="btn primary w-full" style="margin-bottom: 16px;">Log In</button>
     
@@ -36,12 +39,16 @@
   </div>
 
   <script type="module">
-    import { login, getMyProfile } from "./js/auth.js";
+    // NEW: Imported resetPassword
+    import { login, getMyProfile, resetPassword } from "./js/auth.js";
 
     const btn = document.getElementById("btn");
     const err = document.getElementById("err");
+    const forgotPwd = document.getElementById("forgotPwd"); // NEW element
 
+    // --- STANDARD LOGIN ---
     btn.addEventListener("click", async () => {
+      err.style.color = "var(--danger)";
       err.textContent = "";
       btn.textContent = "Logging in...";
       btn.disabled = true;
@@ -58,6 +65,26 @@
         err.textContent = "Login failed. Check your email/password.";
         btn.disabled = false;
         btn.textContent = "Log In";
+      }
+    });
+
+    // --- NEW: PASSWORD RESET ---
+    forgotPwd.addEventListener("click", async (e) => {
+      e.preventDefault(); // Prevents the link from refreshing the page
+      const emailVal = document.getElementById("email").value;
+      
+      err.style.color = "var(--text-main)"; // Make it white while loading
+      err.textContent = "Sending reset link...";
+
+      try {
+        await resetPassword(emailVal);
+        err.style.color = "var(--success)"; // Make it green on success
+        err.textContent = "Reset link sent! Please check your email inbox.";
+      } catch (error) {
+        err.style.color = "var(--danger)"; // Make it red on error
+        err.textContent = error.message.includes("auth/") 
+          ? "Failed to send reset email. Ensure the email is registered." 
+          : error.message;
       }
     });
   </script>

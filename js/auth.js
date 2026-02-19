@@ -4,7 +4,8 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  sendPasswordResetEmail // <-- NEW: Import the Firebase reset function
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { 
   doc, setDoc, getDoc, serverTimestamp 
@@ -16,7 +17,6 @@ export function validateEmail(email) {
 }
 
 export function validatePhoneLK(phone) {
-  // Supports 077... or +9477...
   return /^(\+94|0)\d{9}$/.test(phone.trim());
 }
 
@@ -55,6 +55,12 @@ export async function login({email, password}, errorEl) {
 
 export async function logout() {
   await signOut(auth);
+}
+
+// --- NEW: Password Reset Function ---
+export async function resetPassword(email) {
+  if(!validateEmail(email)) throw new Error("Please enter a valid email to reset your password.");
+  await sendPasswordResetEmail(auth, email.trim());
 }
 
 export async function getMyProfile(uid) {
