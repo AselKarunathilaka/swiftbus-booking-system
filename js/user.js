@@ -49,32 +49,38 @@ if(logoutBtn){
   });
 }
 
-// --- Seat Map Logic ---
-function buildSeatLayout(seatCount = 44) {
+// --- NEW SRI LANKAN SEAT MAP LOGIC ---
+function buildSeatLayout() {
   const seats = [];
-  let n = 1;
-  const rows = Math.ceil(seatCount / 4);
   
-  for (let r = 0; r < rows; r++) {
-    if (n <= seatCount) seats.push(`L${n++}`);
-    if (n <= seatCount) seats.push(`L${n++}`);
-    seats.push("AISLE");
-    if (n <= seatCount) seats.push(`R${n++}`);
-    if (n <= seatCount) seats.push(`R${n++}`);
+  // Generate 12 regular rows (2x2 layout)
+  for (let r = 1; r <= 12; r++) {
+    seats.push(`${r}A`);     // Left Window
+    seats.push(`${r}B`);     // Left Aisle
+    seats.push("AISLE");     // The Walking Aisle Gap
+    seats.push(`${r}C`);     // Right Aisle
+    seats.push(`${r}D`);     // Right Window
   }
+  
+  // Generate the Back Row (5 continuous seats)
+  // Since 12 rows x 4 = 48 seats, the back row starts at 49
+  seats.push("49", "50", "51", "52", "53");
+  
   return seats;
 }
 
 function renderSeats() {
   seatGrid.innerHTML = "";
   if (!selectedScheduleId) {
-    seatGrid.innerHTML = `<div class="muted" style="grid-column:1/-1;text-align:center;padding:20px;">Select a schedule first</div>`;
+    seatGrid.innerHTML = `<div class="muted" style="grid-column:1/-1;text-align:center;padding:20px;">Select a schedule to view seats</div>`;
     return;
   }
 
-  const layout = buildSeatLayout(44); 
+  // Fetch the new Sri Lankan layout
+  const layout = buildSeatLayout(); 
 
   layout.forEach(seatNo => {
+    // If the array item is "AISLE", render an invisible gap
     if (seatNo === "AISLE") {
       const aisle = document.createElement("div");
       aisle.className = "seat-col-gap";
@@ -82,16 +88,19 @@ function renderSeats() {
       return;
     }
 
+    // Otherwise, render an actual clickable seat
     const div = document.createElement("div");
     div.className = "seat";
     div.textContent = seatNo;
 
+    // Apply booked or selected styles
     if (bookedSeats.has(seatNo)) {
       div.classList.add("booked");
     } else if (seatNo === selectedSeat) {
       div.classList.add("selected");
     }
 
+    // Click Event Handler
     div.addEventListener("click", () => {
       if (bookedSeats.has(seatNo)) return;
       
@@ -123,7 +132,6 @@ async function loadRoutes() {
       const r = d.data();
       const opt = document.createElement("option");
       opt.value = d.id;
-      // We store the text in the option so we can grab it later for the booking record
       opt.textContent = `${r.from} ➝ ${r.to}`;
       routeSel.appendChild(opt);
     });
@@ -217,8 +225,6 @@ bookBtn.addEventListener("click", async () => {
   try {
     const bookingId = `${selectedScheduleId}_${selectedSeat}`;
     
-    // CAPTURE READABLE DATA FOR HISTORY
-    // We grab the text directly from the dropdowns
     const routeText = routeSel.options[routeSel.selectedIndex].text; 
     const timeText = timeSel.options[timeSel.selectedIndex].text;
     const dateText = dateSel.value;
@@ -238,7 +244,6 @@ bookBtn.addEventListener("click", async () => {
         userId: currentUser.uid,
         status: "booked",
         createdAt: serverTimestamp(),
-        // NEW: Save human-readable details for the "My Trips" table
         routeDetails: routeText,
         timeDetails: timeText,
         dateDetails: dateText
@@ -283,19 +288,16 @@ bookBtn.addEventListener("click", async () => {
 
   loadRoutes();
   
-  // My Bookings Listener
   const q = query(collection(db, "bookings"), where("userId", "==", authData.user.uid), orderBy("createdAt", "desc"), limit(5));
   onSnapshot(q, (snap) => {
     myBookingsBody.innerHTML = "";
     snap.forEach(d => {
       const b = d.data();
       
-      // Use the saved details, or fallbacks if they don't exist (legacy data)
       const routeDisplay = b.routeDetails || "Loading...";
       const timeDisplay = b.timeDetails || "N/A";
       const dateDisplay = b.dateDetails || (b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString() : 'N/A');
       
-      // Short ID for display (first 8 chars of the doc ID)
       const shortId = d.id.substring(0, 8) + "...";
 
       const row = `<tr>
