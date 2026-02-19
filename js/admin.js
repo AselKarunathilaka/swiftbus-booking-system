@@ -3,7 +3,8 @@ import { db } from "./firebase-config.js";
 import { logout, requireAuth } from "./auth.js";
 import { 
   collection, doc, addDoc, updateDoc, deleteDoc, getDoc, 
-  query, orderBy, onSnapshot, serverTimestamp, limit 
+  query, orderBy, onSnapshot, serverTimestamp, limit,
+  where, getDocs, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 // --- Toast Notification Helper ---
@@ -40,8 +41,7 @@ const kpiRoutes = document.getElementById("kpiRoutes");
 const kpiSchedules = document.getElementById("kpiSchedules");
 const kpiBookings = document.getElementById("kpiBookings");
 
-// --- GLOBAL DATA CACHE (The Secret Sauce) ---
-// We store data here so the Bookings table can "look up" Route Names instantly.
+// --- GLOBAL DATA CACHE ---
 let routeCache = {};      // Maps routeID -> {from, to}
 let scheduleCache = {};   // Maps scheduleID -> {time, routeId, date}
 let allBookingsData = []; // Stores raw bookings
@@ -55,6 +55,21 @@ if(logoutBtn) {
 }
 
 // ----------------------
+// HELPER: CLEANUP BOOKINGS
+// ----------------------
+async function cleanupBookings(filterField, filterValue) {
+  const q = query(collection(db, "bookings"), where(filterField, "==", filterValue));
+  const snap = await getDocs(q);
+  
+  if (snap.empty) return;
+
+  const batch = writeBatch(db);
+  snap.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+  console.log(`Cleaned up ${snap.size} bookings for ${filterField}: ${filterValue}`);
+}
+
+// ----------------------
 // 1. ROUTES
 // ----------------------
 function listenRoutes() {
@@ -63,18 +78,16 @@ function listenRoutes() {
   onSnapshot(q, (snap) => {
     routesBody.innerHTML = "";
     routeSel.innerHTML = `<option value="">Select Route</option>`;
-    routeCache = {}; // Clear cache to rebuild
+    routeCache = {}; 
     let activeCount = 0;
     
     snap.forEach(d => {
       const r = d.data();
       
-      // Save to Cache for Bookings Table
       routeCache[d.id] = r;
 
       if (r.isActive) activeCount++;
 
-      // Dropdown
       if (r.isActive) {
         const opt = document.createElement("option");
         opt.value = d.id;
@@ -82,7 +95,6 @@ function listenRoutes() {
         routeSel.appendChild(opt);
       }
 
-      // Table
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><b>${r.from}</b> ➝ <b>${r.to}</b></td>
@@ -98,8 +110,6 @@ function listenRoutes() {
     });
 
     if(kpiRoutes) kpiRoutes.textContent = activeCount;
-    
-    // Refresh bookings table because now we have route names!
     renderBookingsTable(filterInput ? filterInput.value : "");
   });
 }
@@ -130,8 +140,29 @@ addRouteBtn.addEventListener("click", async () => {
 window.toggleRoute = async (id, state) => {
   try { await updateDoc(doc(db, "routes", id), { isActive: state }); } catch(e) { toast("Error updating", "error"); }
 };
+
 window.deleteRoute = async (id) => {
-  if(confirm("Delete route?")) await deleteDoc(doc(db, "routes", id));
+  if(confirm("Delete route? This will permanently delete ALL associated schedules and bookings.")) {
+    try {
+      // 1. Find all schedules for this route
+      const schedQ = query(collection(db, "schedules"), where("routeId", "==", id));
+      const schedSnap = await getDocs(schedQ);
+      
+      // 2. Queue all schedules for deletion and clear their bookings
+      for (const sDoc of schedSnap.docs) {
+        await cleanupBookings("scheduleId", sDoc.id); // Delete bookings for this schedule
+        await deleteDoc(doc(db, "schedules", sDoc.id)); // Delete the schedule itself
+      }
+      
+      // 3. Delete the route itself
+      await deleteDoc(doc(db, "routes", id));
+      
+      toast("Route and all related data deleted.");
+    } catch (e) {
+      console.error(e);
+      toast("Error during deletion: " + e.message, "error");
+    }
+  }
 };
 
 // ----------------------
@@ -142,16 +173,14 @@ function listenSchedules() {
   
   onSnapshot(q, (snap) => {
     schedBody.innerHTML = "";
-    scheduleCache = {}; // Clear cache
+    scheduleCache = {}; 
     if(kpiSchedules) kpiSchedules.textContent = snap.size;
 
     snap.forEach(d => {
       const s = d.data();
       
-      // Save to Cache for Bookings Table
       scheduleCache[d.id] = s;
 
-      // Resolve Route Name from Cache
       const r = routeCache[s.routeId];
       const routeName = r ? `${r.from} ➝ ${r.to}` : "Unknown Route";
 
@@ -170,7 +199,6 @@ function listenSchedules() {
       schedBody.appendChild(tr);
     });
 
-    // Refresh bookings table because now we have schedule times!
     renderBookingsTable(filterInput ? filterInput.value : "");
   });
 }
@@ -196,11 +224,24 @@ addScheduleBtn.addEventListener("click", async () => {
 });
 
 window.deleteSched = async (id) => {
-  if(confirm("Delete schedule?")) await deleteDoc(doc(db, "schedules", id));
+  if(confirm("Cancel schedule? This will permanently delete all bookings for this trip.")) {
+    try {
+      // 1. Delete all bookings associated with this schedule
+      await cleanupBookings("scheduleId", id);
+      
+      // 2. Delete the schedule
+      await deleteDoc(doc(db, "schedules", id));
+      
+      toast("Schedule and associated bookings cleared.");
+    } catch (e) {
+      console.error(e);
+      toast("Error cancelling schedule: " + e.message, "error");
+    }
+  }
 };
 
 // ----------------------
-// 3. BOOKINGS (With Route & Time Lookup)
+// 3. BOOKINGS
 // ----------------------
 function listenBookings() {
   const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"), limit(100));
@@ -221,7 +262,7 @@ function listenBookings() {
     });
     
     if(kpiBookings) kpiBookings.textContent = activeBookings;
-    renderBookingsTable("");
+    renderBookingsTable(filterInput ? filterInput.value : "");
   });
 }
 
@@ -230,7 +271,6 @@ function renderBookingsTable(filterText) {
   bookingsBody.innerHTML = "";
   const term = filterText.toLowerCase().trim();
 
-  // Smart Filter
   const filtered = allBookingsData.filter(b => {
     if(!term) return true;
     return (
@@ -246,7 +286,6 @@ function renderBookingsTable(filterText) {
   }
 
   filtered.forEach(b => {
-    // --- THE MAGIC LOOKUP ---
     const sched = scheduleCache[b.scheduleId];
     let routeName = "Unknown Route";
     let timeStr = "Unknown Time";
@@ -258,7 +297,6 @@ function renderBookingsTable(filterText) {
       const r = routeCache[sched.routeId];
       if (r) routeName = `${r.from} ➝ ${r.to}`;
     }
-    // ------------------------
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -307,8 +345,6 @@ window.cancelBooking = async (id) => {
     return;
   }
   
-  // Start listening to everything.
-  // The tables will auto-update as the data arrives.
   listenRoutes();
   listenSchedules();
   listenBookings();
